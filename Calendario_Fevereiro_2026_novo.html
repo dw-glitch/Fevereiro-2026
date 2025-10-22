@@ -531,11 +531,15 @@
         const STORAGE_KEY = 'calendario_pilula_fevereiro_2026';
         const BACKUP_KEY = 'calendario_pilula_backup_fevereiro';
         
-        // Função para carregar dados salvos
+        // Função para carregar dados salvos (mais robusta: aceita backup, coerção para número e dedupe)
         function loadTakenDays() {
             try {
-                let saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved) : [];
+                let saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(BACKUP_KEY);
+                if (!saved) return [];
+                const parsed = JSON.parse(saved);
+                if (!Array.isArray(parsed)) return [];
+                const numbers = parsed.map(n => Number(n)).filter(n => !Number.isNaN(n));
+                return Array.from(new Set(numbers)); // remove duplicatas
             } catch (error) {
                 console.warn('Erro ao carregar dados:', error);
                 return [];
@@ -555,11 +559,11 @@
             }
         }
 
-        // Função para alternar o status de um dia
+        // Função para alternar o status de um dia (permitir também dias yellow-period)
         function toggleDay(dayElement) {
             const dayNumber = parseInt(dayElement.textContent);
             
-            if (!dayNumber || dayElement.classList.contains('empty') || dayElement.classList.contains('yellow-period')) {
+            if (!dayNumber || dayElement.classList.contains('empty')) {
                 return;
             }
 
@@ -578,7 +582,7 @@
             saveTakenDays(takenDays);
         }
 
-        // Função para inicializar o calendário
+        // Função para inicializar o calendário (adiciona listener a todos os dias não-vazios)
         function initializeCalendar() {
             let takenDays = loadTakenDays();
             const dayElements = document.querySelectorAll('.day:not(.empty)');
@@ -590,8 +594,10 @@
                     dayElement.classList.add('taken');
                 }
                 
-                if (dayNumber && !dayElement.classList.contains('yellow-period')) {
+                // Adiciona o listener para todos os dias não vazios (inclui yellow-period)
+                if (dayNumber) {
                     dayElement.addEventListener('click', () => toggleDay(dayElement));
+                    dayElement.style.cursor = 'pointer';
                 }
             });
         }
